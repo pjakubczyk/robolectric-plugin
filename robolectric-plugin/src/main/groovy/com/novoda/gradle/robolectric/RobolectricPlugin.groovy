@@ -1,19 +1,27 @@
 package com.novoda.gradle.robolectric
+
 import com.android.build.gradle.BasePlugin
 import org.gradle.api.Action
+import org.gradle.api.DefaultTask
 import org.gradle.api.Plugin
 import org.gradle.api.Project
+import org.gradle.api.Task
 import org.gradle.api.artifacts.Configuration
 import org.gradle.api.artifacts.ConfigurationContainer
+import org.gradle.api.file.FileCollection
+import org.gradle.api.internal.project.AbstractProject
+import org.gradle.api.plugins.GroovyPlugin
 import org.gradle.api.plugins.JavaBasePlugin
 import org.gradle.api.plugins.JavaPluginConvention
 import org.gradle.api.tasks.SourceSet
+import org.gradle.api.tasks.TaskAction
 import org.gradle.api.tasks.testing.Test
 
 import java.util.concurrent.Callable
 
 class RobolectricPlugin implements Plugin<Project> {
 
+    static String NAME = "testRobolectric"
     public static final String ANDROID_PLUGIN_NAME = "android";
     public static final String ANDROID_LIBRARY_PLUGIN_NAME = "android-library";
 
@@ -28,23 +36,44 @@ class RobolectricPlugin implements Plugin<Project> {
 
     void apply(Project project) {
         project.getPlugins().apply(JavaBasePlugin.class);
-        ensureValidProject(project);
 
-        JavaPluginConvention javaConvention = project.getConvention().getPlugin(JavaPluginConvention.class);
-        configureConfigurations(project);
+        Project androidProject
+
+        project.getRootProject().getAllprojects().each {
+            if (it.plugins.hasPlugin("android")) {
+                androidProject = it
+            }
+        }
+
+        println androidProject
+
+//        ensureValidProject(androidProject);
+//
+        JavaPluginConvention javaConvention = androidProject.getConvention().getPlugin(JavaPluginConvention.class);
+        configureConfigurations(androidProject);
         configureSourceSets(javaConvention);
 
-        configureTest(project, javaConvention);
+
+
+
+//        JavaPluginConvention groovyPlugin = project.getConvention().getPlugin(JavaPluginConvention.class)
+//        groovyPlugin.sourceSets.main.runtimeClasspath += project.files("/home/rudy/dev/projects/RoboTestProject/RoboTest/build/classes/debug")
+//        groovyPlugin.sourceSets.main.compileClasspath += project.files("/home/rudy/dev/projects/RoboTestProject/RoboTest/build/classes/debug")
+
+
+                configureTest(project, androidProject, javaConvention);
+
 
         project.afterEvaluate {
-            configureAndroidDependency(project, javaConvention)
+            configureAndroidDependency(androidProject, javaConvention)
         }
     }
+
 
     def configureAndroidDependency(Project project, JavaPluginConvention pluginConvention) {
         SourceSet robolectric = pluginConvention.getSourceSets().findByName(ROBOLECTRIC_SOURCE_SET_NAME);
 
-        ((BasePlugin) getAndroidPlugin(project)).mainSourceSet.java.srcDirs.each { dir ->
+        getAndroidPlugin(project).mainSourceSet.java.srcDirs.each { dir ->
             def buildDir = dir.getAbsolutePath().split(File.separator)
             buildDir = (buildDir[0..(buildDir.length - 4)] + ['build', 'classes', 'debug']).join(File.separator)
             robolectric.compileClasspath += project.files(buildDir)
@@ -101,44 +130,74 @@ class RobolectricPlugin implements Plugin<Project> {
         robolectric.runtimeClasspath += robolectric.compileClasspath
     }
 
-    private void configureTest(final Project project, final JavaPluginConvention pluginConvention) {
+    private void configureTest(
+            final Project project,
+            final Project androidProject, final JavaPluginConvention pluginConvention) {
         project.getTasks().withType(Test.class, new Action<Test>() {
             public void execute(final Test test) {
-                test.workingDir 'src/main'
-                test.getConventionMapping().map("testClassesDir", new Callable<Object>() {
-                    public Object call() throws Exception {
-                        return pluginConvention.getSourceSets().getByName("robolectric").getOutput().getClassesDir();
-                    }
-                });
+                println test.name
+//                test.workingDir 'src/main'
+
+//                test.getConventionMapping().map("testClassesDir", new Callable<Object>() {
+//                    public Object call() throws Exception {
+//                        File dir = pluginConvention.getSourceSets().getByName("robolectric").getOutput().getClassesDir()
+//                        println dir
+//                        return dir;
+//                    }
+//                });
+//
+                println test.testClassesDir
+
+//                final FileCollection collection = test.classpath
+                println "Original collection"
+//                collection.each { println it }
+
 
                 test.getConventionMapping().map("classpath", new Callable<Object>() {
                     public Object call() throws Exception {
-                        return pluginConvention.getSourceSets().getByName("robolectric").getRuntimeClasspath();
+//                        collection.each { println it}
+
+//                        FileCollection classpath = pluginConvention.getSourceSets().getByName("robolectric").getRuntimeClasspath()
+
+
+//                        collection.plus(classpath)
+
+                        return project.files("/home/rudy/dev/projects/RoboTestProject/RoboTest/build/classes/debug", collection.getFiles())
                     }
                 });
 
-                test.getConventionMapping().map("testSrcDirs", new Callable<Object>() {
-                    public Object call() throws Exception {
-                        return new ArrayList<File>(pluginConvention.getSourceSets().getByName("robolectric").getJava().getSrcDirs());
-                    }
-                });
+//                println "After remapping"
+//                test.classpath.each { println it }
+
+//                test.classpath.plus(project.files("/home/rudy/dev/projects/RoboTestProject/RoboTest/build/classes/debug"))
+//
+
+//                test.getConventionMapping().map("testSrcDirs", new Callable<Object>() {
+//                    public Object call() throws Exception {
+//                        return new ArrayList<File>(pluginConvention.getSourceSets().getByName("robolectric").getJava().getSrcDirs());
+//                    }
+//                });
+
+
+//                test.testSrcDirs.each { println it }
             }
         });
-
+//
         Test test = project.getTasks().create(ROBOLECTRIC_TASK_NAME, Test.class);
         project.getTasks().getByName(JavaBasePlugin.CHECK_TASK_NAME).dependsOn(test);
         test.setDescription("Runs the unit tests using robolectric.");
         test.setGroup(JavaBasePlugin.VERIFICATION_GROUP);
 
-        test.dependsOn(project.getTasks().findByName('robolectricClasses'))
-        test.dependsOn(project.getTasks().findByName('assemble'))
+//        test.dependsOn(androidProject.getTasks().findByName('robolectricClasses'))
+//        test.dependsOn(androidProject.getTasks().findByName('assemble'))
     }
 
-    private BasePlugin getAndroidPlugin(Project project) {
+    def getAndroidPlugin(Project project) {
         if (project.getPlugins().hasPlugin(ANDROID_LIBRARY_PLUGIN_NAME)) {
-            return (BasePlugin) project.getPlugins().findPlugin(ANDROID_LIBRARY_PLUGIN_NAME);
+            return project.getPlugins().findPlugin(ANDROID_LIBRARY_PLUGIN_NAME);
         }
-        return (BasePlugin) project.getPlugins().findPlugin(ANDROID_PLUGIN_NAME);
+        return project.getPlugins().findPlugin(ANDROID_PLUGIN_NAME);
     }
+
 
 }

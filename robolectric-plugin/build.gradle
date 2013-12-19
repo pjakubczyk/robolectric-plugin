@@ -51,18 +51,6 @@ jar {
     }
 }
 
-idea.project {
-    jdkName = '1.6'
-
-    ipr.withXml { provider ->
-        def node = provider.asNode()
-        def vcsConfig = node.component.find { it.'@name' == 'VcsDirectoryMappings' }
-        vcsConfig.mapping[0].'@vcs' = 'Git'
-        def gradleSettings = node.appendNode('component', [name: 'GradleSettings'])
-        gradleSettings.appendNode('option', [name: 'SDK_HOME', value: gradle.gradleHomeDir])
-    }
-}
-
 task wrapper(type: Wrapper) {
     gradleVersion = '1.8'
 }

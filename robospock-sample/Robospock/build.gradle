@@ -1,0 +1,25 @@
+buildscript {
+    repositories {
+        mavenLocal()
+        mavenCentral()
+    }
+    dependencies {
+        classpath 'com.android.tools.build:gradle:0.6.+'
+        classpath 'com.novoda.gradle:robolectric-plugin:0.0.2'
+    }
+}
+
+
+repositories {
+    mavenCentral()
+}
+
+apply plugin: "groovy"
+//apply plugin: 'robolectric'
+
+dependencies {
+    compile "org.codehaus.groovy:groovy-all:1.8.6"
+    compile 'pl.polidea:robospock:0.4'
+    compile project(":android-sample")
+}
+
