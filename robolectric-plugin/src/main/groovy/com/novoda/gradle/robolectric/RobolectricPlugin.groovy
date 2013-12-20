@@ -32,7 +32,9 @@ class RobolectricPlugin implements Plugin<Project> {
 
     public static final String ROBOLECTRIC_SOURCE_SET_NAME = "robolectric";
     public static final String ROBOLECTRIC_CONFIGURATION_NAME = "robolectric";
-    public static final String ROBOLECTRIC_TASK_NAME = "robolectric";
+    public static final String ROBOLECTRIC_TASK_NAME = "robolectric"
+
+
 
     void apply(Project project) {
         project.getPlugins().apply(JavaBasePlugin.class);
@@ -133,63 +135,45 @@ class RobolectricPlugin implements Plugin<Project> {
     private void configureTest(
             final Project project,
             final Project androidProject, final JavaPluginConvention pluginConvention) {
+
         project.getTasks().withType(Test.class, new Action<Test>() {
             public void execute(final Test test) {
                 println test.name
-//                test.workingDir 'src/main'
+                test.workingDir 'src/main'
 
-//                test.getConventionMapping().map("testClassesDir", new Callable<Object>() {
-//                    public Object call() throws Exception {
-//                        File dir = pluginConvention.getSourceSets().getByName("robolectric").getOutput().getClassesDir()
-//                        println dir
-//                        return dir;
-//                    }
-//                });
-//
-                println test.testClassesDir
-
-//                final FileCollection collection = test.classpath
-                println "Original collection"
-//                collection.each { println it }
-
-
-                test.getConventionMapping().map("classpath", new Callable<Object>() {
+                test.getConventionMapping().map("testClassesDir", new Callable<Object>() {
                     public Object call() throws Exception {
-//                        collection.each { println it}
-
-//                        FileCollection classpath = pluginConvention.getSourceSets().getByName("robolectric").getRuntimeClasspath()
-
-
-//                        collection.plus(classpath)
-
-                        return project.files("/home/rudy/dev/projects/RoboTestProject/RoboTest/build/classes/debug", collection.getFiles())
+                        File dir = pluginConvention.getSourceSets().getByName("robolectric").getOutput().getClassesDir()
+                        println dir
+                        return dir;
                     }
                 });
 
-//                println "After remapping"
-//                test.classpath.each { println it }
+                test.getConventionMapping().map("classpath", new Callable<Object>() {
+                    public Object call() throws Exception {
+                        FileCollection classpath = pluginConvention.getSourceSets().getByName("robolectric").getRuntimeClasspath()
+                        return classpath
+                    }
+                });
+                test.getConventionMapping().map("testSrcDirs", new Callable<Object>() {
+                    public Object call() throws Exception {
+                        return new ArrayList<File>(pluginConvention.getSourceSets().getByName("robolectric").getJava().getSrcDirs());
+                    }
+                });
 
-//                test.classpath.plus(project.files("/home/rudy/dev/projects/RoboTestProject/RoboTest/build/classes/debug"))
-//
+                println "Test classpath"
+                test.classpath.each { println it}
 
-//                test.getConventionMapping().map("testSrcDirs", new Callable<Object>() {
-//                    public Object call() throws Exception {
-//                        return new ArrayList<File>(pluginConvention.getSourceSets().getByName("robolectric").getJava().getSrcDirs());
-//                    }
-//                });
-
-
-//                test.testSrcDirs.each { println it }
             }
         });
-//
+
         Test test = project.getTasks().create(ROBOLECTRIC_TASK_NAME, Test.class);
         project.getTasks().getByName(JavaBasePlugin.CHECK_TASK_NAME).dependsOn(test);
         test.setDescription("Runs the unit tests using robolectric.");
         test.setGroup(JavaBasePlugin.VERIFICATION_GROUP);
 
-//        test.dependsOn(androidProject.getTasks().findByName('robolectricClasses'))
-//        test.dependsOn(androidProject.getTasks().findByName('assemble'))
+        test.dependsOn(androidProject.getTasks().findByName('robolectricClasses'))
+        test.dependsOn(androidProject.getTasks().findByName('assemble'))
     }
 
     def getAndroidPlugin(Project project) {
