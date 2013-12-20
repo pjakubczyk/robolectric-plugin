@@ -4,8 +4,8 @@ buildscript {
         mavenCentral()
     }
     dependencies {
-        classpath 'com.android.tools.build:gradle:0.6.+'
-        classpath 'com.novoda.gradle:robolectric-plugin:0.0.2'
+        classpath 'com.android.tools.build:gradle:0.7.+'
+        classpath 'com.novoda.gradle:robolectric-plugin:0.0.1'
     }
 }
 
