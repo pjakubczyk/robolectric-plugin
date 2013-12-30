@@ -58,12 +58,19 @@ class RobolectricPlugin implements Plugin<Project> {
 
 
 
-//        JavaPluginConvention groovyPlugin = project.getConvention().getPlugin(JavaPluginConvention.class)
-//        groovyPlugin.sourceSets.main.runtimeClasspath += project.files("/home/rudy/dev/projects/RoboTestProject/RoboTest/build/classes/debug")
-//        groovyPlugin.sourceSets.main.compileClasspath += project.files("/home/rudy/dev/projects/RoboTestProject/RoboTest/build/classes/debug")
+        JavaPluginConvention groovyPlugin = project.getConvention().getPlugin(JavaPluginConvention.class)
+        groovyPlugin.sourceSets.test.java.srcDirs += "/home/rudy/dev/projects/robolectric-plugin/robospock-sample/AndroidSampleProject/src/main/java"
+        groovyPlugin.sourceSets.test.java.srcDirs += "/home/rudy/dev/projects/robolectric-plugin/robospock-sample/AndroidSampleProject/build/source/r/debug"
+//        groovyPlugin.sourceSets.test.runtimeClasspath += project.files("/home/rudy/dev/projects/RoboTestProject/RoboTest/build/classes/debug")
+//        groovyPlugin.sourceSets.test.compileClasspath += project.files("/home/rudy/dev/projects/RoboTestProject/RoboTest/build/classes/debug")
 
 
-                configureTest(project, androidProject, javaConvention);
+        groovyPlugin.sourceSets.each {
+            println it
+            println it.allSource.srcDirs
+        }
+
+        configureTest(project, androidProject, javaConvention);
 
 
         project.afterEvaluate {
@@ -138,42 +145,47 @@ class RobolectricPlugin implements Plugin<Project> {
 
         project.getTasks().withType(Test.class, new Action<Test>() {
             public void execute(final Test test) {
-                println test.name
-                test.workingDir 'src/main'
+//                println test.name
 
-                test.getConventionMapping().map("testClassesDir", new Callable<Object>() {
-                    public Object call() throws Exception {
-                        File dir = pluginConvention.getSourceSets().getByName("robolectric").getOutput().getClassesDir()
-                        println dir
-                        return dir;
-                    }
-                });
+//                println test.testClassesDir
 
-                test.getConventionMapping().map("classpath", new Callable<Object>() {
-                    public Object call() throws Exception {
-                        FileCollection classpath = pluginConvention.getSourceSets().getByName("robolectric").getRuntimeClasspath()
-                        return classpath
-                    }
-                });
-                test.getConventionMapping().map("testSrcDirs", new Callable<Object>() {
-                    public Object call() throws Exception {
-                        return new ArrayList<File>(pluginConvention.getSourceSets().getByName("robolectric").getJava().getSrcDirs());
-                    }
-                });
+//                test.getConventionMapping().map("testClassesDir", new Callable<Object>() {
+//                    public Object call() throws Exception {
+//                        File dir = pluginConvention.getSourceSets().getByName("robolectric").getOutput().getClassesDir()
+//                        println dir
+//                        return dir;
+//                    }
+//                });
 
-                println "Test classpath"
-                test.classpath.each { println it}
+//                test.getConventionMapping().map("classpath", new Callable<Object>() {
+//                    public Object call() throws Exception {
+//                        FileCollection classpath = pluginConvention.getSourceSets().getByName("robolectric").getRuntimeClasspath()
+//
+//                        return project.files("/home/rudy/dev/projects/robolectric-plugin/robospock-sample/AndroidSampleProject/build/classes/debug")
+//                    }
+//                });
 
+
+//                println "Test classpath"
+//                test.classpath.each {
+//                    println it
+//                }
+//
+//                test.getConventionMapping().map("testSrcDirs", new Callable<Object>() {
+//                    public Object call() throws Exception {
+//                        return new ArrayList<File>(pluginConvention.getSourceSets().getByName("robolectric").getJava().getSrcDirs());
+//                    }
+//                });
             }
         });
 
-        Test test = project.getTasks().create(ROBOLECTRIC_TASK_NAME, Test.class);
-        project.getTasks().getByName(JavaBasePlugin.CHECK_TASK_NAME).dependsOn(test);
-        test.setDescription("Runs the unit tests using robolectric.");
-        test.setGroup(JavaBasePlugin.VERIFICATION_GROUP);
-
-        test.dependsOn(androidProject.getTasks().findByName('robolectricClasses'))
-        test.dependsOn(androidProject.getTasks().findByName('assemble'))
+//        Test test = project.getTasks().create(ROBOLECTRIC_TASK_NAME, Test.class);
+//        project.getTasks().getByName(JavaBasePlugin.CHECK_TASK_NAME).dependsOn(test);
+//        test.setDescription("Runs the unit tests using robolectric.");
+//        test.setGroup(JavaBasePlugin.VERIFICATION_GROUP);
+//
+//        test.dependsOn(androidProject.getTasks().findByName('robolectricClasses'))
+//        test.dependsOn(androidProject.getTasks().findByName('assemble'))
     }
 
     def getAndroidPlugin(Project project) {

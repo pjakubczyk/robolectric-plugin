@@ -15,7 +15,7 @@ repositories {
 }
 
 apply plugin: "groovy"
-apply plugin: 'robolectric'
+//apply plugin: 'robolectric'
 
 dependencies {
     compile "org.codehaus.groovy:groovy-all:1.8.6"
