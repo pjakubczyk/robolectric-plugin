@@ -1,42 +1,17 @@
 package com.novoda.gradle.robolectric
 
-import com.android.build.gradle.BasePlugin
-import org.gradle.api.Action
-import org.gradle.api.DefaultTask
 import org.gradle.api.Plugin
 import org.gradle.api.Project
-import org.gradle.api.Task
-import org.gradle.api.artifacts.Configuration
-import org.gradle.api.artifacts.ConfigurationContainer
-import org.gradle.api.file.FileCollection
-import org.gradle.api.internal.project.AbstractProject
-import org.gradle.api.plugins.GroovyPlugin
 import org.gradle.api.plugins.JavaBasePlugin
-import org.gradle.api.plugins.JavaPluginConvention
-import org.gradle.api.tasks.SourceSet
-import org.gradle.api.tasks.TaskAction
 import org.gradle.api.tasks.testing.Test
-
-import java.util.concurrent.Callable
 
 class RobolectricPlugin implements Plugin<Project> {
 
-    static String NAME = "testRobolectric"
-    public static final String ANDROID_PLUGIN_NAME = "android";
-    public static final String ANDROID_LIBRARY_PLUGIN_NAME = "android-library";
-
-    public static final String COMPILE_CONFIGURATION_NAME = "compile";
-    public static final String TEST_COMPILE_CONFIGURATION_NAME = "robolectricTestCompile";
-    public static final String RUNTIME_CONFIGURATION_NAME = "runtime";
-    public static final String TEST_RUNTIME_CONFIGURATION_NAME = "robolectricTestRuntime";
-
-    public static final String ROBOLECTRIC_SOURCE_SET_NAME = "robolectric";
-    public static final String ROBOLECTRIC_CONFIGURATION_NAME = "robolectric";
-    public static final String ROBOLECTRIC_TASK_NAME = "robolectric"
-
+    public static final String ROBOSPOCK_TASK_NAME = "robospock"
 
 
     void apply(Project project) {
+
         project.getPlugins().apply(JavaBasePlugin.class);
 
         Project androidProject
@@ -47,153 +22,19 @@ class RobolectricPlugin implements Plugin<Project> {
             }
         }
 
-        println androidProject
-
-//        ensureValidProject(androidProject);
-//
-        JavaPluginConvention javaConvention = androidProject.getConvention().getPlugin(JavaPluginConvention.class);
-        configureConfigurations(androidProject);
-        configureSourceSets(javaConvention);
-
-
-
-
-        JavaPluginConvention groovyPlugin = project.getConvention().getPlugin(JavaPluginConvention.class)
-        groovyPlugin.sourceSets.test.java.srcDirs += "/home/rudy/dev/projects/robolectric-plugin/robospock-sample/AndroidSampleProject/src/main/java"
-        groovyPlugin.sourceSets.test.java.srcDirs += "/home/rudy/dev/projects/robolectric-plugin/robospock-sample/AndroidSampleProject/build/source/r/debug"
-//        groovyPlugin.sourceSets.test.runtimeClasspath += project.files("/home/rudy/dev/projects/RoboTestProject/RoboTest/build/classes/debug")
-//        groovyPlugin.sourceSets.test.compileClasspath += project.files("/home/rudy/dev/projects/RoboTestProject/RoboTest/build/classes/debug")
-
-
-        groovyPlugin.sourceSets.each {
-            println it
-            println it.allSource.srcDirs
+        project.dependencies {
+            compile project.files(androidProject.buildDir.path + '/classes/debug')
+            compile project.files(androidProject.buildDir.path + '/res/all/debug')
         }
 
-        configureTest(project, androidProject, javaConvention);
+        Test test = project.getTasks().create(ROBOSPOCK_TASK_NAME, Test.class);
+        project.getTasks().getByName(JavaBasePlugin.CHECK_TASK_NAME).dependsOn(test);
+        test.setDescription("Runs the unit tests using Robospock.")
+        test.setGroup(JavaBasePlugin.VERIFICATION_GROUP)
 
+        test.workingDir = project.getRootProject().projectDir
 
-        project.afterEvaluate {
-            configureAndroidDependency(androidProject, javaConvention)
-        }
+        test.dependsOn(androidProject.getTasks().findByName('assemble'))
     }
-
-
-    def configureAndroidDependency(Project project, JavaPluginConvention pluginConvention) {
-        SourceSet robolectric = pluginConvention.getSourceSets().findByName(ROBOLECTRIC_SOURCE_SET_NAME);
-
-        getAndroidPlugin(project).mainSourceSet.java.srcDirs.each { dir ->
-            def buildDir = dir.getAbsolutePath().split(File.separator)
-            buildDir = (buildDir[0..(buildDir.length - 4)] + ['build', 'classes', 'debug']).join(File.separator)
-            robolectric.compileClasspath += project.files(buildDir)
-            robolectric.runtimeClasspath += project.files(buildDir)
-        }
-
-        getAndroidPlugin(project).variantDataList.each {
-            it.variantDependency.getJarDependencies().each {
-                robolectric.compileClasspath += project.files(it.jarFile)
-                robolectric.runtimeClasspath += project.files(it.jarFile)
-            }
-        }
-
-        // AAR files
-        getAndroidPlugin(project).prepareTaskMap.each {
-            robolectric.compileClasspath += project.fileTree(dir: it.value.explodedDir, include: '*.jar')
-            robolectric.runtimeClasspath += project.fileTree(dir: it.value.explodedDir, include: '*.jar')
-        }
-
-        // Default Android jar
-        getAndroidPlugin(project).getRuntimeJarList().each {
-            robolectric.compileClasspath += project.files(it)
-            robolectric.runtimeClasspath += project.files(it)
-        }
-
-        robolectric.runtimeClasspath = robolectric.runtimeClasspath.filter {
-            it
-            true
-        }
-    }
-
-    private void ensureValidProject(Project project) {
-        boolean isAndroidProject = project.getPlugins().hasPlugin(ANDROID_PLUGIN_NAME);
-        boolean isAndroidLibProject = project.getPlugins().hasPlugin(ANDROID_LIBRARY_PLUGIN_NAME);
-        if (!(isAndroidLibProject | isAndroidProject)) {
-            throw new NotAnAndroidProject();
-        }
-    }
-
-    void configureConfigurations(Project project) {
-        ConfigurationContainer configurations = project.getConfigurations();
-        Configuration compileConfiguration = configurations.getByName(COMPILE_CONFIGURATION_NAME);
-        Configuration robolectric = configurations.create(ROBOLECTRIC_CONFIGURATION_NAME);
-        robolectric.extendsFrom(compileConfiguration);
-    }
-
-    private void configureSourceSets(final JavaPluginConvention pluginConvention) {
-        final Project project = pluginConvention.getProject();
-
-        SourceSet robolectric = pluginConvention.getSourceSets().create(ROBOLECTRIC_SOURCE_SET_NAME);
-
-        robolectric.java.srcDir project.file('src/test/java')
-        robolectric.compileClasspath += project.configurations.robolectric
-        robolectric.runtimeClasspath += robolectric.compileClasspath
-    }
-
-    private void configureTest(
-            final Project project,
-            final Project androidProject, final JavaPluginConvention pluginConvention) {
-
-        project.getTasks().withType(Test.class, new Action<Test>() {
-            public void execute(final Test test) {
-//                println test.name
-
-//                println test.testClassesDir
-
-//                test.getConventionMapping().map("testClassesDir", new Callable<Object>() {
-//                    public Object call() throws Exception {
-//                        File dir = pluginConvention.getSourceSets().getByName("robolectric").getOutput().getClassesDir()
-//                        println dir
-//                        return dir;
-//                    }
-//                });
-
-//                test.getConventionMapping().map("classpath", new Callable<Object>() {
-//                    public Object call() throws Exception {
-//                        FileCollection classpath = pluginConvention.getSourceSets().getByName("robolectric").getRuntimeClasspath()
-//
-//                        return project.files("/home/rudy/dev/projects/robolectric-plugin/robospock-sample/AndroidSampleProject/build/classes/debug")
-//                    }
-//                });
-
-
-//                println "Test classpath"
-//                test.classpath.each {
-//                    println it
-//                }
-//
-//                test.getConventionMapping().map("testSrcDirs", new Callable<Object>() {
-//                    public Object call() throws Exception {
-//                        return new ArrayList<File>(pluginConvention.getSourceSets().getByName("robolectric").getJava().getSrcDirs());
-//                    }
-//                });
-            }
-        });
-
-//        Test test = project.getTasks().create(ROBOLECTRIC_TASK_NAME, Test.class);
-//        project.getTasks().getByName(JavaBasePlugin.CHECK_TASK_NAME).dependsOn(test);
-//        test.setDescription("Runs the unit tests using robolectric.");
-//        test.setGroup(JavaBasePlugin.VERIFICATION_GROUP);
-//
-//        test.dependsOn(androidProject.getTasks().findByName('robolectricClasses'))
-//        test.dependsOn(androidProject.getTasks().findByName('assemble'))
-    }
-
-    def getAndroidPlugin(Project project) {
-        if (project.getPlugins().hasPlugin(ANDROID_LIBRARY_PLUGIN_NAME)) {
-            return project.getPlugins().findPlugin(ANDROID_LIBRARY_PLUGIN_NAME);
-        }
-        return project.getPlugins().findPlugin(ANDROID_PLUGIN_NAME);
-    }
-
 
 }
